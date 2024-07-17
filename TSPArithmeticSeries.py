@@ -1,1 +1,338 @@
+def Factorial(num):
+    f = 1
+    for g in range(2, num + 1):
+        f *= g
+    return f
 
+def UnrankPermutationInQuadraticTime(rank, n):
+    # CREATE SORTED ARRAY
+    permutingArray = [x for x in range(n)]
+    # FOR EACH NUMBER IN THE PERMUTATION
+    f = Factorial(n)
+    index = 0
+    for i in range(n - 1):
+        if index == rank:
+            break
+        # FIND NUMBER BY LINEAR INTERPOLATION OF SUB-INDICES
+        f //= n - i
+        linearInterpolation = 0
+        j = n - 1
+        while j >= i:
+            subIndex = j - i
+            linearInterpolation = f * subIndex
+            if index + linearInterpolation <= rank:
+                break
+            j -= 1
+        index += linearInterpolation
+        # INSERT BY BUBBLE-SWAPPING
+        pos1 = j
+        pos2 = i
+        if j > i:
+            pos1 = i
+            pos2 = j
+        j = pos2
+        while j > pos1:
+            temp = permutingArray[j]
+            permutingArray[j] = permutingArray[j - 1]
+            permutingArray[j - 1] = temp
+            j -= 1
+    return permutingArray
+
+def TourDistance(V, matrix, tour):
+    fromVertex = tour[0]
+    toVertex = tour[1]
+    sum = matrix[fromVertex][toVertex]
+    for i in range(1, V - 1):
+        fromVertex = tour[i]
+        toVertex = tour[i + 1]
+        sum += matrix[fromVertex][toVertex]
+    # DISTANCE OF TOUR + RETURN TO STARTING VERTEX
+    return sum + matrix[toVertex][tour[0]]
+
+def BruteForce(V, matrix):
+    i = 0
+    tour = UnrankPermutationInQuadraticTime(i, V)
+    minDistance = TourDistance(V, matrix, tour)
+    minTour = [tour[x] for x in range(V)]
+    f = Factorial(V - 1)
+    for i in range(1, f):
+        tour = UnrankPermutationInQuadraticTime(i, V)
+        distance = TourDistance(V, matrix, tour)
+        if distance < minDistance:
+            minDistance = distance
+            minTour = [tour[x] for x in range(V)]
+    print("The optimal Hamiltonian cycle is")
+    for vertex in minTour:
+        print(vertex, end=" -> ")
+    print(minTour[0])
+    print("The minimum distance is", minDistance)
+    return minDistance
+
+def RemoveVisited(i, nexts, prevs):
+    iPlus1 = i + 1
+    # REMOVE DOUBLY LINKED LIST NODE
+    nexts[prevs[iPlus1]] = nexts[iPlus1]
+    prevs[nexts[iPlus1]] = prevs[iPlus1]
+
+def FindNearestNeighbor(V, i, matrix, nexts):
+    head = 0
+    j = nexts[head] - 1
+    min = matrix[i][j]
+    minJ = j
+    # TRAVERSE LINKED LIST
+    while j < V:
+        if matrix[i][j] < min:
+            min = matrix[i][j]
+            minJ = j
+        j = nexts[j + 1] - 1
+    return minJ
+
+def AdjustMatrix(V, relabeledVertices, matrix, relabeledMatrix):
+    min = matrix[0][1]
+    minI = 0
+    minJ = 1
+
+    # READ MATRIX WITH DIAGONAL VECTORIZATION
+    edge = 0
+    for i in range(1, V + 1):
+        y = 0
+        x = i
+        for j in range(i, V):
+            # FIND MINIMUM EDGE
+            if matrix[y][x] < min:
+                min = matrix[y][x]
+                minI = y
+                minJ = x
+            edge += 1
+            # TRAVERSE THE MATRIX DIAGONALLY
+            y += 1
+            x += 1
+
+    # DOUBLY LINKED LIST
+    nexts = [0 for x in range(V + 2)]
+    prevs = [0 for x in range(V + 2)]
+    for i in range(V + 1):
+        nexts[i] = i + 1
+        prevs[i + 1] = i
+    RemoveVisited(minI, nexts, prevs)
+    RemoveVisited(minJ, nexts, prevs)
+
+    # DECIDE FIRST VERTICES
+    iNeighbor = FindNearestNeighbor(V, minI, matrix, nexts)
+    jNeighbor = FindNearestNeighbor(V, minJ, matrix, nexts)
+    if matrix[minI][iNeighbor] < matrix[minJ][jNeighbor]:
+        # SWAP
+        temp = minI
+        minI = minJ
+        minJ = temp
+        jNeighbor = iNeighbor
+    RemoveVisited(jNeighbor, nexts, prevs)
+
+    relabeledVertices[0] = minI
+    relabeledVertices[1] = minJ
+    relabeledVertices[2] = jNeighbor
+
+    # RELABEL VERTICES
+    for i in range(2, V - 1):
+        j = FindNearestNeighbor(V, relabeledVertices[i], matrix, nexts)
+        RemoveVisited(j, nexts, prevs)
+        relabeledVertices[i + 1] = j
+
+    # TRAVERSE THE MATRIX WITH LEFT TO RIGHT VECTORIZATION
+    edge = 0
+    for i in range(V):
+        for j in range(i + 1, V):
+            oldI = relabeledVertices[i]
+            oldJ = relabeledVertices[j]
+            # RELABEL MATRIX
+            relabeledMatrix[i][j] = matrix[oldI][oldJ]
+            relabeledMatrix[j][i] = matrix[oldJ][oldI]
+            edge += 1
+
+def BinarySearchIndex(array, mileposts, lower, upper, item):
+    low = lower
+    high = upper
+    while low <= high:
+        mid = low + ((high - low) >> 1)
+        midItem = array[mid]
+        if item == midItem:
+            # ITEM FOUND
+            if mid == 0 or midItem != array[mid - 1]:
+                # START OF ARRAY OR SUBARRAY
+                return mid
+            else:
+                # IS A DUPLICATE
+                return mileposts[mid]
+        elif item < midItem:
+            # SEARCH LEFT
+            high = mid - 1
+        else:
+            # SEARCH RIGHT
+            low = mid + 1
+    return -1
+
+def RankPermutation(permutation, n):
+    # COMPUTE ceil(log n)
+    bits = n
+    found1 = False
+    foundMany1s = False
+    k = 0
+    while bits != 0:
+        if (bits & 1) == 1:
+            if found1:
+                foundMany1s = True
+            found1 = True
+        bits = bits >> 1
+        k += 1
+    if found1 and not foundMany1s:
+        # n IS A POWER OF 2
+        k -= 1
+    l = 1 << k
+    heapSize = (l << 1) - 1
+    heap = [0 for x in range(heapSize)]
+    # COMPUTE PERMUTATION RANK
+    rank = 0
+    for i in range(0, n):
+        ctr = permutation[i]
+        node = l + ctr
+        for j in range(0, k):
+            if (node & 1) == 1:
+                ctr -= heap[((node >> 1) << 1) - 1]
+            heap[node - 1] += 1
+            node = node >> 1
+        heap[node - 1] += 1
+        rank = rank * (n - i) + ctr
+    return rank
+
+def Boundary(V, factorials):
+    if V == 7:
+        return 5910
+    if V > 7:
+        return factorials[V] + Boundary(V - 1, factorials)
+
+def SolveTSP(matrix):
+    print("Adjacency Matrix:")
+    for row in matrix:
+        print(row)
+
+    # NUMBER OF VERTICES
+    V = len(matrix)
+
+    if V < 7:
+        return BruteForce(V, matrix)
+
+    # NUMBER OF EDGES
+    E = (V * (V - 1)) >> 1
+
+    # RELABEL MATRIX
+    relabeledVertices = [0 for x in range(V)]
+    relabeledMatrix = [[0 for x in range(V)] for y in range(V)]
+    AdjustMatrix(V, relabeledVertices, matrix, relabeledMatrix)
+
+    # MAIN ALGORITHM
+    edges = [0 for x in range(E)]
+
+    # READ MATRIX WITH DIAGONAL VECTORIZATION
+    edge = 0
+    for i in range(1, V + 1):
+        y = 0
+        x = i
+        for j in range(i, V):
+            # COLLECT EDGE
+            edges[edge] = relabeledMatrix[y][x]
+            edge += 1
+            # TRAVERSE THE MATRIX DIAGONALLY
+            y += 1
+            x += 1
+
+    # SORT EDGE WEIGHT LIST
+    sorted = [edges[x] for x in range(E)]
+    sorted.sort()
+
+    # MILEPOSTS FOR TRACKING SUBARRAYS OF DUPLICATES
+    # (FOR GENERALIZING WHEN ARITHMETIC PROGRESSIONS ARE NO LONGER REQUIRED)
+    mileposts = [0 for x in range(E)]
+    i = 0
+    while i < E:
+        j = i
+        while j < E and sorted[i] == sorted[j]:
+            mileposts[j] = i
+            j += 1
+        i = j
+
+    # MAKE PERMUTABLE FORMAT USING BINARY SEARCH ON SORTED EDGES
+    permutation = [0 for x in range(E)]
+    high = E - 1
+    for i in range(E):
+        index = BinarySearchIndex(sorted, mileposts, 0, high, edges[i])
+        # REWRITE EDGE WEIGHT LIST WITH NEW PERMUTABLE FORMAT
+        permutation[i] = mileposts[index]
+        mileposts[index] += 1
+
+    # RANK PERMUTATION
+    rank = RankPermutation(permutation, E)
+
+    # PRE-COMPUTE FACTORIALS
+    factorials = [1 for x in range(V + 1)]
+    for i in range(1, V + 1):
+        factorials[i] = i * factorials[i - 1]
+
+    # FINAL DECISION
+    if rank > Boundary(V, factorials):
+        print("THE OPTIMAL HAMILTONIAN CYCLE IS UNKNOWN")
+        return -1
+
+    # HAMILTONIAN CYCLE 0
+    candidate0 = [relabeledVertices[x] for x in range(V)]
+
+    # HAMILTONIAN CYCLE 1
+    candidate1 = [relabeledVertices[x] for x in range(V)]
+    # SWAP LAST TWO VERTICES
+    temp = candidate1[V - 2]
+    candidate1[V - 2] = candidate1[V - 1]
+    candidate1[V - 1] = temp
+
+    # HAMILTONIAN CYCLE (V - 2)! - 1
+    candidateV_2F_1 = [relabeledVertices[x] for x in range(V)]
+    # REVERSE ENDING SUBARRAY
+    mid = 3 + ((V - 3) >> 1)
+    for i in range(2, mid):
+        temp = candidateV_2F_1[i]
+        candidateV_2F_1[i] = candidateV_2F_1[V - 1 - (i - 2)]
+        candidateV_2F_1[V - 1 - (i - 2)] = temp
+
+    # COMPARE CANDIDATES
+    distance0 = TourDistance(V, matrix, candidate0)
+    distance1 = TourDistance(V, matrix, candidate1)
+    distanceV_2F_1 = TourDistance(V, matrix, candidateV_2F_1)
+
+    minDistance = distance0
+    minTour = [candidate0[x] for x in range(V)]
+    if distance1 < minDistance:
+        minDistance = distance1
+        minTour = [candidate1[x] for x in range(V)]
+    if distanceV_2F_1 < minDistance:
+        minDistance = distanceV_2F_1
+        minTour = [candidateV_2F_1[x] for x in range(V)]
+
+    print("THE OPTIMAL HAMILTONIAN CYCLE IS")
+    for vertex in minTour:
+        print(vertex, end=" -> ")
+    print(minTour[0])
+    print("THE MINIMUM DISTANCE IS", minDistance)
+    return minDistance
+
+if __name__ == '__main__':
+    # INPUT AN ADJACENCY MATRIX WITH EDGES THAT FORM AN ARITHMETIC SERIES (e.g. 3.2, 5.2, 7.2, 9.2, ...)
+    # WITH ANY POSITIVE FIRST TERM, ANY POSITIVE COMMON DIFFERENCE, AND ANY NUMBER OF VERTICES
+    # IT MUST BE AN UNDIRECTED GRAPH
+    graph = [
+        [0, 2, 14, 24, 32, 38, 42],
+        [2, 0, 4, 16, 26, 34, 40],
+        [14, 4, 0, 6, 18, 28, 36],
+        [24, 16, 6, 0, 8, 20, 30],
+        [32, 26, 18, 8, 0, 10, 22],
+        [38, 34, 28, 20, 10, 0, 12],
+        [42, 40, 36, 30, 22, 12, 0],
+    ]
+    SolveTSP(graph)
