@@ -343,4 +343,5 @@ if __name__ == '__main__':
         [42, 40, 36, 30, 22, 12, 0],
     ]
     # CHOOSE 1 OR 2 AS THE SECOND ARGUMENT "iBoundary"
+    # THE NUMBER OF SOLVABLE TSP INSTANCES DEPENDS ON THIS
     SolveTSP(graph, 2)
