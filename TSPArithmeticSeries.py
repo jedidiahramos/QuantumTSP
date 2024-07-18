@@ -61,11 +61,11 @@ def BruteForce(V, matrix):
         if distance < minDistance:
             minDistance = distance
             minTour = [tour[x] for x in range(V)]
-    print("The optimal Hamiltonian cycle is")
+    print("THE OPTIMAL HAMILTONIAN CYCLE IS")
     for vertex in minTour:
         print(vertex, end=" -> ")
     print(minTour[0])
-    print("The minimum distance is", minDistance)
+    print("THE MINIMUM DISTANCE IS", minDistance)
     return minDistance
 
 def RemoveVisited(i, nexts, prevs):
@@ -192,10 +192,10 @@ def RankPermutation(permutation, n):
     heap = [0 for x in range(heapSize)]
     # COMPUTE PERMUTATION RANK
     rank = 0
-    for i in range(0, n):
+    for i in range(n):
         ctr = permutation[i]
         node = l + ctr
-        for j in range(0, k):
+        for j in range(k):
             if (node & 1) == 1:
                 ctr -= heap[((node >> 1) << 1) - 1]
             heap[node - 1] += 1
@@ -204,13 +204,19 @@ def RankPermutation(permutation, n):
         rank = rank * (n - i) + ctr
     return rank
 
-def Boundary(V, factorials):
-    if V == 7:
-        return 5910
-    if V > 7:
-        return factorials[V] + Boundary(V - 1, factorials)
+def Boundary(n, i, factorials):
+    if i == 1:
+        if n == 5:
+            return 32
+        if n > 5:
+            return factorials[n - 1] + Boundary(n - 1, i, factorials)
+    if i == 2:
+        if n == 7:
+            return 5910
+        if n > 7:
+            return factorials[n] + Boundary(n - 1, i, factorials)
 
-def SolveTSP(matrix):
+def SolveTSP(matrix, iBoundary):
     print("Adjacency Matrix:")
     for row in matrix:
         print(row)
@@ -218,7 +224,8 @@ def SolveTSP(matrix):
     # NUMBER OF VERTICES
     V = len(matrix)
 
-    if V < 7:
+    # TRIVIAL CASE
+    if (iBoundary == 1 and V < 5) or (iBoundary == 2 and V < 7):
         return BruteForce(V, matrix)
 
     # NUMBER OF EDGES
@@ -278,19 +285,12 @@ def SolveTSP(matrix):
         factorials[i] = i * factorials[i - 1]
 
     # FINAL DECISION
-    if rank > Boundary(V, factorials):
+    if rank > Boundary(V, iBoundary, factorials):
         print("THE OPTIMAL HAMILTONIAN CYCLE IS UNKNOWN")
         return -1
 
     # HAMILTONIAN CYCLE 0
     candidate0 = [relabeledVertices[x] for x in range(V)]
-
-    # HAMILTONIAN CYCLE 1
-    candidate1 = [relabeledVertices[x] for x in range(V)]
-    # SWAP LAST TWO VERTICES
-    temp = candidate1[V - 2]
-    candidate1[V - 2] = candidate1[V - 1]
-    candidate1[V - 1] = temp
 
     # HAMILTONIAN CYCLE (V - 2)! - 1
     candidateV_2F_1 = [relabeledVertices[x] for x in range(V)]
@@ -301,19 +301,26 @@ def SolveTSP(matrix):
         candidateV_2F_1[i] = candidateV_2F_1[V - 1 - (i - 2)]
         candidateV_2F_1[V - 1 - (i - 2)] = temp
 
+    # HAMILTONIAN CYCLE 1
+    candidate1 = [relabeledVertices[x] for x in range(V)]
+    # SWAP LAST TWO VERTICES
+    temp = candidate1[V - 2]
+    candidate1[V - 2] = candidate1[V - 1]
+    candidate1[V - 1] = temp
+
     # COMPARE CANDIDATES
     distance0 = TourDistance(V, matrix, candidate0)
-    distance1 = TourDistance(V, matrix, candidate1)
     distanceV_2F_1 = TourDistance(V, matrix, candidateV_2F_1)
+    distance1 = TourDistance(V, matrix, candidate1)
 
     minDistance = distance0
     minTour = [candidate0[x] for x in range(V)]
-    if distance1 < minDistance:
-        minDistance = distance1
-        minTour = [candidate1[x] for x in range(V)]
     if distanceV_2F_1 < minDistance:
         minDistance = distanceV_2F_1
         minTour = [candidateV_2F_1[x] for x in range(V)]
+    if distance1 < minDistance:
+        minDistance = distance1
+        minTour = [candidate1[x] for x in range(V)]
 
     print("THE OPTIMAL HAMILTONIAN CYCLE IS")
     for vertex in minTour:
@@ -335,4 +342,5 @@ if __name__ == '__main__':
         [38, 34, 28, 20, 10, 0, 12],
         [42, 40, 36, 30, 22, 12, 0],
     ]
-    SolveTSP(graph)
+    # CHOOSE 1 OR 2 AS THE SECOND ARGUMENT "iBoundary"
+    SolveTSP(graph, 2)
