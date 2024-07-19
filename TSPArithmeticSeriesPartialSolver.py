@@ -204,6 +204,12 @@ def RankPermutation(permutation, n):
         rank = rank * (n - i) + ctr
     return rank
 
+def PreComputeFactorials(n):
+    factorials = [1 for x in range(n + 1)]
+    for i in range(1, n + 1):
+        factorials[i] = i * factorials[i - 1]
+    return factorials
+
 def Boundary(n, i, factorials):
     if i == 1:
         if n == 5:
@@ -280,9 +286,7 @@ def SolveTSP(matrix, iBoundary):
     rank = RankPermutation(permutation, E)
 
     # PRE-COMPUTE FACTORIALS
-    factorials = [1 for x in range(V + 1)]
-    for i in range(1, V + 1):
-        factorials[i] = i * factorials[i - 1]
+    factorials = PreComputeFactorials(V)
 
     # FINAL DECISION
     if rank > Boundary(V, iBoundary, factorials):
