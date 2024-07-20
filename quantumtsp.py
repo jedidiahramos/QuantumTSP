@@ -14,6 +14,7 @@ model = traveling_salesperson(distance_matrix=DISTANCE_MATRIX)
 from dwave.system import LeapHybridNLSampler
 sampler = LeapHybridNLSampler()
 
+# THIS ACTUALLY GETS SENT TO D-WAVE IN CANADA
 results = sampler.sample(model, label='TSP')
 
 route, = model.iter_decisions()
