@@ -18,5 +18,5 @@ sampler = LeapHybridNLSampler()
 results = sampler.sample(model, label='TSP')
 
 route, = model.iter_decisions()
-print("TOUR:")
+print("DWAVE TOUR:")
 print(route.state(0))
