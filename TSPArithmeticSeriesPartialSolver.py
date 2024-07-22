@@ -1,42 +1,54 @@
-def Factorial(num):
-    f = 1
-    for g in range(2, num + 1):
-        f *= g
-    return f
+def PreComputeFactorials(n):
+    factorials = [1 for x in range(n + 1)]
+    for i in range(1, n + 1):
+        factorials[i] = i * factorials[i - 1]
+    return factorials
 
-def UnrankPermutationInQuadraticTime(rank, n):
-    # CREATE SORTED ARRAY
-    permutingArray = [x for x in range(n)]
-    # FOR EACH NUMBER IN THE PERMUTATION
-    f = Factorial(n)
-    index = 0
+def UnrankPermutation(permutationRank, n, factorials):
+    # GET FACTORIAL DIGITS
+    factorialDigits = [0 for x in range(n)]
+    rank = permutationRank
     for i in range(n - 1):
-        if index == rank:
-            break
-        # FIND NUMBER BY LINEAR INTERPOLATION OF SUB-INDICES
-        f //= n - i
-        linearInterpolation = 0
-        j = n - 1
-        while j >= i:
-            subIndex = j - i
-            linearInterpolation = f * subIndex
-            if index + linearInterpolation <= rank:
-                break
-            j -= 1
-        index += linearInterpolation
-        # INSERT BY BUBBLE-SWAPPING
-        pos1 = j
-        pos2 = i
-        if j > i:
-            pos1 = i
-            pos2 = j
-        j = pos2
-        while j > pos1:
-            temp = permutingArray[j]
-            permutingArray[j] = permutingArray[j - 1]
-            permutingArray[j - 1] = temp
-            j -= 1
-    return permutingArray
+        f = factorials[n - i - 1]
+        factorialDigits[i] = rank // f
+        rank %= f
+    # COMPUTE ceil(log n)
+    bits = n
+    found1 = False
+    foundMany1s = False
+    k = 0
+    while bits != 0:
+        if (bits & 1) == 1:
+            if found1:
+                foundMany1s = True
+            found1 = True
+        bits = bits >> 1
+        k += 1
+    if found1 and not foundMany1s:
+        # n IS A POWER OF 2
+        k -= 1
+    l = 1 << k
+    heapSize = (l << 1) - 1
+    heap = [0 for x in range(heapSize)]
+    m = 1
+    for i in range(k + 1):
+        for j in range(m):
+            heap[m + j - 1] = 1 << (k - i)
+        m = m << 1
+    permutation = [0 for x in range(n)]
+    # UNRANK PERMUTATION
+    for i in range(n):
+        digit = factorialDigits[i]
+        node = 1
+        for j in range(k):
+            heap[node - 1] -= 1
+            node = node << 1
+            if digit >= heap[node - 1]:
+                digit -= heap[node - 1]
+                node += 1
+        heap[node - 1] = 0
+        permutation[i] = node - l
+    return permutation
 
 def TourDistance(V, matrix, tour):
     fromVertex = tour[0]
@@ -49,23 +61,22 @@ def TourDistance(V, matrix, tour):
     # DISTANCE OF TOUR + RETURN TO STARTING VERTEX
     return sum + matrix[toVertex][tour[0]]
 
-def BruteForce(V, matrix):
-    i = 0
-    tour = UnrankPermutationInQuadraticTime(i, V)
+def BruteForce(V, matrix, factorials):
+    tour = UnrankPermutation(0, V, factorials)
     minDistance = TourDistance(V, matrix, tour)
     minTour = [tour[x] for x in range(V)]
-    f = Factorial(V - 1)
+    f = factorials[V - 1]
+    # EXHAUSTIVE SEARCH
     for i in range(1, f):
-        tour = UnrankPermutationInQuadraticTime(i, V)
+        tour = UnrankPermutation(i, V, factorials)
         distance = TourDistance(V, matrix, tour)
         if distance < minDistance:
             minDistance = distance
             minTour = [tour[x] for x in range(V)]
-    print("THE OPTIMAL HAMILTONIAN CYCLE IS")
-    for vertex in minTour:
-        print(vertex, end=" -> ")
-    print(minTour[0])
-    print("THE MINIMUM DISTANCE IS", minDistance)
+    print("THE OPTIMAL TOUR IS")
+    print(minTour)
+    print("THE MINIMUM DISTANCE IS")
+    print(minDistance)
     return minDistance
 
 def RemoveVisited(i, nexts, prevs):
@@ -204,12 +215,6 @@ def RankPermutation(permutation, n):
         rank = rank * (n - i) + ctr
     return rank
 
-def PreComputeFactorials(n):
-    factorials = [1 for x in range(n + 1)]
-    for i in range(1, n + 1):
-        factorials[i] = i * factorials[i - 1]
-    return factorials
-
 def Boundary(n, i, factorials):
     if i == 1:
         if n == 5:
@@ -230,9 +235,12 @@ def SolveTSP(matrix, iBoundary):
     # NUMBER OF VERTICES
     V = len(matrix)
 
+    # PRE-COMPUTE FACTORIALS
+    factorials = PreComputeFactorials(V)
+
     # TRIVIAL CASE
     if (iBoundary == 1 and V < 5) or (iBoundary == 2 and V < 7):
-        return BruteForce(V, matrix)
+        return BruteForce(V, matrix, factorials)
 
     # NUMBER OF EDGES
     E = (V * (V - 1)) >> 1
@@ -285,12 +293,9 @@ def SolveTSP(matrix, iBoundary):
     # RANK PERMUTATION
     rank = RankPermutation(permutation, E)
 
-    # PRE-COMPUTE FACTORIALS
-    factorials = PreComputeFactorials(V)
-
     # FINAL DECISION
     if rank > Boundary(V, iBoundary, factorials):
-        print("THE OPTIMAL HAMILTONIAN CYCLE IS UNKNOWN")
+        print("THE OPTIMAL TOUR IS UNKNOWN")
         return -1
 
     # HAMILTONIAN CYCLE 0
@@ -326,11 +331,10 @@ def SolveTSP(matrix, iBoundary):
         minDistance = distance1
         minTour = [candidate1[x] for x in range(V)]
 
-    print("THE OPTIMAL HAMILTONIAN CYCLE IS")
-    for vertex in minTour:
-        print(vertex, end=" -> ")
-    print(minTour[0])
-    print("THE MINIMUM DISTANCE IS", minDistance)
+    print("THE OPTIMAL TOUR IS")
+    print(minTour)
+    print("THE MINIMUM DISTANCE IS")
+    print(minDistance)
     return minDistance
 
 if __name__ == '__main__':
@@ -344,7 +348,7 @@ if __name__ == '__main__':
         [24, 16, 6, 0, 8, 20, 30],
         [32, 26, 18, 8, 0, 10, 22],
         [38, 34, 28, 20, 10, 0, 12],
-        [42, 40, 36, 30, 22, 12, 0],
+        [42, 40, 36, 30, 22, 12, 0]
     ]
     # CHOOSE 1 OR 2 AS THE SECOND ARGUMENT "iBoundary"
     # THE NUMBER OF SOLVABLE TSP INSTANCES DEPENDS ON THIS
